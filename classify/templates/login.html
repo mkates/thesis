@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block javascript %}
+<script>
+
+
+</script>
+{% endblock %}
+
+{% block css %}
+<style>
+.login-container {
+	display: table;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    max-width: 1140px;
+}
+.login-middle {
+    display: table-cell;
+    vertical-align: middle;
+}
+.login {
+    margin-left: auto;
+    margin-right: auto; 
+    padding: 20px;
+    width: 450px;
+    background: white;
+    border:2px solid #ddd;
+    box-shadow: 0 0 2px #fff;
+    text-align: center;
+}
+.login img {
+	width: 200px;
+	margin-bottom: 20px;
+}
+.login-form {
+	text-align: left;
+	margin: 0 50px;
+}
+.error {
+	color: red;
+	font-weight: bold;
+}
+</style>
+
+{% endblock %}
+{% block content %}
+
+<div class="login-container">
+	<div class="login-middle">
+		<div class="login">
+			<img class="logo" src='{{STATIC_URL}}img/logo.png' alt="Courtlytics"/>
+			{% if error %}
+				<p class="error">{{error}}</p>
+			{% endif %}
+			<form role="form" class="login-form" action="/loginrequest" method="POST">
+			  {% csrf_token %}
+			  <div class="form-group">
+				<label for="exampleInputEmail1">Email</label>
+				<input type="email" class="form-control" name="email" placeholder="Enter email">
+			  </div>
+			  <div class="form-group">
+				<label for="exampleInputPassword1">Password</label>
+				<input type="password" class="form-control" name="password" placeholder="Password">
+			  </div>
+			  <button type="submit" class="button button-rounded button-primary">Enter</button>
+			</form>
+		</div>
+	</div>
+</div>
+{% endblock %}

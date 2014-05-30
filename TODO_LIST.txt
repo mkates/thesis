@@ -1,0 +1,26 @@
+TODO LIST
+
+- Plays broken down by possession, but need to end the play on an offensive rebound or the ball goes out of bounds
+- Eliminate any plays shorter than 2 seconds
+- Determine when the play starts (i.e. one second after all five guys cross half court or something like that)
+- Build classifier than segments the court and determines what percentage of the play someone is in that spot
+- NOT NECCESARY: Identify skips in the data, handle accordingly
+
+
+Strategies:
+- snapshot at beginning of play
+- look at when players get 'close' to one another
+
+
+
+Plan of Attack:
+
+- Extract the min distances of players within a threshold and include: time within that distance, the min distance, the x and y of the players (take the midpoint between the two players), and the time after the start of the play
+
+
+First Implementation:
+
+-> Segment the court into quadrants
+-> Two sets of features, number of close encounters with the ball and number of close encounters without the ball for a given region
+
+*** On closeness algorithm, sometimes it jumps slightly if a player goes outside the min distance and comes back in 

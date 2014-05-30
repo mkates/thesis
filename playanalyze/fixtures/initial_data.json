@@ -1,0 +1,55 @@
+[{
+    "pk": 1, 
+    "model": "auth.user", 
+    "fields": {
+        "username": "admin@admin.com", 
+        "first_name": "", 
+        "last_name": "", 
+        "is_active": true, 
+        "is_superuser": true, 
+        "is_staff": true, 
+        "last_login": "2013-10-28T04:37:02.515Z", 
+        "groups": [], 
+        "user_permissions": [], 
+        "password": "pbkdf2_sha256$10000$xSO9oRFz88LQ$XGNybzF63vtLfbJllBzLt6hfO0tTY2W3BXaln8ncgBM=", 
+        "email": "admin@admin.com", 
+        "date_joined": "2013-10-28T04:36:12.295Z"
+    }
+},
+{
+    "pk": 2, 
+    "model": "auth.user", 
+    "fields": {
+        "username": "guttag@mit.edu", 
+        "first_name": "", 
+        "last_name": "", 
+        "is_active": true, 
+        "is_superuser": false, 
+        "is_staff": false, 
+        "last_login": "2013-10-28T04:37:27.969Z", 
+        "groups": [], 
+        "user_permissions": [], 
+        "password": "pbkdf2_sha256$12000$NlriseDERQ50$jylG/0brgqsDQW3hH5gq8ItDVCVwahgb6yCOzzDcKZk=", 
+        "email": "guttag@mit.edu", 
+        "date_joined": "2013-10-28T04:37:27.969Z"
+    }
+},	
+{
+    "pk": 3, 
+    "model": "auth.user", 
+    "fields": {
+        "username": "jwiens@mit.edu", 
+        "first_name": "", 
+        "last_name": "", 
+        "is_active": true, 
+        "is_superuser": false, 
+        "is_staff": false, 
+        "last_login": "2013-10-28T04:37:27.969Z", 
+        "groups": [], 
+        "user_permissions": [], 
+        "password": "pbkdf2_sha256$12000$NlriseDERQ50$jylG/0brgqsDQW3hH5gq8ItDVCVwahgb6yCOzzDcKZk=", 
+        "email": "jwiens@mit.edu", 
+        "date_joined": "2013-10-28T04:37:27.969Z"
+    }
+}
+]

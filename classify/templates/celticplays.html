@@ -1,0 +1,43 @@
+<html>
+<head></head>
+<body>
+	Length: {{possession.count}}
+	<table>
+		<thead>
+			<th>Play ID</th>
+			<th>Play Name</th>
+			<th>Game ID</th>
+			<th>Quarter</th>
+			<th>Time Start</th>
+			<th>Time End</th>
+
+			<th>Possession ID</th>
+			<th>Possession Game ID</th>
+			<th>Quarter</th>
+			<th>Time Start</th>
+			<th>Time End</th>
+		</thead>
+
+
+		<tbody>
+			{% for cp in possession %}
+			<tr>
+				<td>{{cp.play.id}}</td>
+				<td>{{cp.play.play_name}}</td>
+				<td>{{cp.play.game_id}}</td>
+				<td>{{cp.play.quarter}}</td>
+				<td>{{cp.play.start_game_clock}}</td>
+				<td>{{cp.play.end_game_clock}}</td>
+				<td>{{cp.id}}</td>
+				<td>{{cp.game_number}}</td>
+				<td>{{cp.period}}</td>
+				<td>{{cp.time_start}}</td>
+				<td>{{cp.time_end}}</td>
+				{% endfor %}
+			</tr>
+		</tbody>
+
+
+	</table>
+</body>
+</html>

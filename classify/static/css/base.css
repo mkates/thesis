@@ -1,0 +1,40 @@
+body {
+	background: #f6f6f6;
+	background-image: url("../img/fabric_plaid.png");
+}
+.body-container {
+	width: 1140px;
+	margin: 0 auto;
+	border-top: 1px solid #fff;
+}
+
+/* Header */
+.header {
+	width: 1140px;
+	margin: 0 auto;
+	border-bottom: 1px solid #ddd;
+}
+.header .navigation {
+	float: right;
+	margin-top: 30px;
+	margin-right: 5px;
+}
+.header .navigation a {
+	padding: 5px 10px;
+	font-weight: 200;
+	color: #888;
+}
+.header .logo {
+	width: 200px;
+	padding: 15px 0 5px 0;
+}
+/* Footer */
+.footer {
+	text-align: center;
+	font-weight: lighter;
+	text-shadow: 0 0 1px #aaa;
+	font-size: 15px;
+	letter-spacing: .6px;
+	padding-top: 30px;
+	padding-bottom: 40px;
+}

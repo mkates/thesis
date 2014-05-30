@@ -1,0 +1,747 @@
+{% extends 'base.html' %}
+{% load dateformat %}
+{% load clockformat %}
+{% load humanize %}
+{% block javascript %}
+<script>
+
+//Pre load the images
+var offense = new Image;
+offense.src = '{{STATIC_URL}}img/players_green.png';
+var defense = new Image;
+defense.src = '{{STATIC_URL}}img/players_red.png';
+var ball = new Image;
+ball.src = '{{STATIC_URL}}img/ball.png';
+
+//Global variables
+COURT_MULTIPLIER = 8; //For sizing on the court (ie court is 8x larger than 50x94
+var SPEED = 1; //Rate of iterating through sequences
+var DIRECTION = 'forward'; // Play direction
+var PLAYING = false; // Play boolean
+var sequence = 0; //Tracks position sequence
+var heatmap;
+var heatmap_status = 'none';
+var player_trail = false;
+var ball_trail = false;
+//Array of positions
+var position_array = []
+//Array of closeness
+var closeness_array = []
+//Main function (configure and initialization)
+$(document).ready(function() {
+	//Looping of position updates
+	var updatePositions = function() {
+		clearInterval(interval);
+		if (PLAYING && sequence >= 0 && sequence < position_array.length) {
+			drawPlayers(sequence);
+		};
+		interval = setInterval(updatePositions, 1000/(25*SPEED));
+    };
+    var interval = setInterval(updatePositions, 1000/(25*SPEED));
+    
+    //Configure and initialize heatmap
+    var config = {
+        element: document.getElementById("heatmapArea"),
+        radius: 15,
+        opacity: 50,
+    };
+    heatmap = heatmapFactory.create(config);
+    $("#heatmapArea").css('display',"none");
+
+    //Bind click to progress bar
+    $(".progress").click(function(e) {
+    	sequence = parseInt((e.offsetX*position_array.length)/300)
+    	reDrawAtSequence(sequence);
+    })
+    $("#possession_id_button").click(function() {
+    	loadPossession($("#possession_id_input").val());
+    })
+    $(".playname").click(function() {
+    	$(".playname").removeClass('active');
+    	$(this).addClass('active');
+    	var playname = $(this);
+    	$.each($(".playid"),function(index,value) {
+    		if ($(value).attr('data-playname') == $(playname).attr('data-playname')) {
+    			$(value).css('display','block');
+    		} else {
+    			$(value).css('display','none');
+    		}
+    	})
+    })
+    $('.playid').click(function(){
+    	$(".playid").removeClass('active');
+    	$(this).addClass('active');
+    	loadPossession($(this).attr('data-id'));
+    })
+});
+
+//Generates the heat map based on the sequence number
+function generateHeatMap(sequence_no) {
+	var points = []
+	for (var seq=0; seq <= sequence_no; seq = seq + 3) {
+		if (heatmap_status == 'offense') {
+			for (var player=0; player < 5; player++) {
+				points.push({x:position_array[seq][player*3+1]*COURT_MULTIPLIER,
+								y:position_array[seq][player*3+2]*COURT_MULTIPLIER,
+								count:1
+				});
+			};
+		} else if (heatmap_status == 'ball') {
+			points.push({x:position_array[seq][30]*COURT_MULTIPLIER,
+							y:position_array[seq][31]*COURT_MULTIPLIER,
+							count:1
+			});
+		}
+	};
+	heatmap.store.setDataSet({ max: 5, data:points});
+}
+
+
+//Redraws everything given a sequence number
+function reDrawAtSequence(sequence_number) {
+	ball_trail ? drawBallTrail(sequence_number) : clearBallTrail();
+	player_trail ? drawPlayerTrail(sequence_number) : clearPlayerTrail();
+	setClock(position_array[sequence_number][33]);
+	generateHeatMap(sequence_number);
+	drawPlayers(sequence_number);
+	progress = parseInt((sequence_number / position_array.length)*100);
+	prog_percent = String(progress+"%");
+	$("#progress-bar").css("width",prog_percent);
+}
+
+//Draws players on court for reDrawAtSequence
+function drawPlayers(sequence_no) {
+	var canvas = $('#court-canvas')[0].getContext("2d"); // Get canvas handlers
+	$("#court-canvas").removeLayerGroup('player');
+	$("#court-canvas").removeLayerGroup('closeness');
+	$("#court-canvas").removeLayer('ball').drawLayers();
+	for (var player=0; player < 5; player++) {
+		//Draw offensive positions
+		x = position_array[sequence_no][player*3+1]*COURT_MULTIPLIER;
+		y = position_array[sequence_no][player*3+2]*COURT_MULTIPLIER;
+		$('#court-canvas').drawImage({
+		  source: offense,
+		  layer: true,
+		  groups:['player'],
+		  player:position_array[sequence_no][player*3],
+		  x: x, y: y, width: 30, height: 30,
+		  mouseover: function(layer) {
+		  	if (!(PLAYING)) {
+				$('#court-canvas').drawText({
+				  fillStyle: '#333',
+				  fontStyle: 'bold',
+				  name:'tooltip',
+				  x: layer.x, y: layer.y+30,
+				  fontFamily: 'Verdana, sans-serif',
+				  text: String(layer.player),
+				  layer:true
+				});
+			};
+		  },
+		  mouseout: function(layer) {
+		  	$('#court-canvas').removeLayer('tooltip');
+		  }
+		});
+		//Draw defensive positions
+		x = position_array[sequence_no][15+player*3+1]*COURT_MULTIPLIER;
+		y = position_array[sequence_no][15+player*3+2]*COURT_MULTIPLIER;
+		$('#court-canvas').drawImage({
+		  source: defense,
+		  layer: true,
+		  groups:['player'],
+		  player:position_array[sequence_no][15+player*3],
+		  x: x, y: y, width: 30, height: 30,
+		  mouseover: function(layer) {
+		  	if (!(PLAYING)) {
+				$('#court-canvas').drawText({
+				  fillStyle: '#333',
+				  fontStyle: 'bold',
+				  name:'tooltip',
+				  x: layer.x, y: layer.y+30,
+				  fontFamily: 'Verdana, sans-serif',
+				  text: String(layer.player),
+				  layer:true,
+				});
+			};
+		   },
+		   mouseout: function(layer) {
+		  	$('#court-canvas').removeLayer('tooltip');
+		   }
+		});	
+	}
+	//Draw the ball
+	x = position_array[sequence_no][30]*COURT_MULTIPLIER;
+	y = position_array[sequence_no][31]*COURT_MULTIPLIER;
+	z = 20+(position_array[sequence_no][32]*10)/10;
+	$('#court-canvas').drawImage({
+	  source: ball,
+	  layer: true,
+	  name:'ball',
+	  x: x, y: y, width: z, height: z
+	});	
+	if (DIRECTION == 'forward') {
+		sequence = Math.min(position_array.length-1, sequence_no+1);
+	} else {
+		sequence = Math.max(0,sequence_no-1)
+	}
+	progress = parseInt((sequence_no / position_array.length)*100);
+	prog_percent = String(progress+"%");
+	$("#progress-bar").css("width",prog_percent);
+	setClock(position_array[sequence_no][33]);
+	if (!(sequence % 25) && heatmap_status != 'none') {
+		generateHeatMap(sequence);
+	};
+	if (player_trail && sequence % 25 == 0) {
+		drawPlayerTrail(sequence);
+	}
+	if (ball_trail && sequence % 25 == 0) {
+		drawBallTrail(sequence);
+	}
+
+	//Draw the closeness
+	var time_on_clock = position_array[sequence_no][33]
+	for (var close=0; close < closeness_array.length; close++) {
+		if (!(closeness_array[close]['start'] <= time_on_clock || closeness_array[close]['end'] > time_on_clock)) {
+			player_1 = closeness_array[close]['player_1']-1;
+			player_2 = closeness_array[close]['player_2']-1;
+			strokeColor = closeness_array[close]['on_ball'] == true ? '#000' : '#ff0';
+			$('#court-canvas').drawLine({
+			  strokeStyle: strokeColor,
+		  	  strokeWidth: 4,
+			  layer: true,
+			  name:'closeness',
+			  x1: position_array[sequence_no][player_1*3+1]*COURT_MULTIPLIER, 
+			  y1: position_array[sequence_no][player_1*3+2]*COURT_MULTIPLIER, 
+			  x2: position_array[sequence_no][player_2*3+1]*COURT_MULTIPLIER, 
+			  y2: position_array[sequence_no][player_2*3+2]*COURT_MULTIPLIER
+			});	
+		}
+	}
+}
+
+//Draw the Trail of each player
+function drawPlayerTrail(sequence) {
+	$('#court-canvas').removeLayerGroup('playertrail').drawLayers();
+	for (var seq=25; seq <= sequence; seq = seq+25) {
+		for (var player=0; player < 5; player++) {
+			$('#court-canvas').drawLine({
+			  strokeStyle: color(player),
+			  strokeWidth: 5,
+			  groups:['playertrail'],
+			  layer: true,
+			  x1: position_array[seq-25][player*3+1]*COURT_MULTIPLIER,
+		 	  y1: position_array[seq-25][player*3+2]*COURT_MULTIPLIER,
+		      x2: position_array[seq][player*3+1]*COURT_MULTIPLIER,
+		      y2: position_array[seq][player*3+2]*COURT_MULTIPLIER
+			});
+		};
+	};
+}
+
+//Colors used for player trails and ball trail
+function color(integer) {
+	switch(integer) {
+		case 0:
+			return '#7474ED';
+		case 1:
+			return '#56DB6C';
+		case 2:
+			return '#309CDB';
+		case 3:
+			return '#DB605C';
+		case 4:
+			return '#DBAA23';
+	}
+}
+
+// Draws the path of the ball
+function drawBallTrail(sequence) {
+	$('#court-canvas').removeLayerGroup('balltrail').drawLayers();
+	for (var seq=5; seq <= sequence; seq = seq+5) {
+		$('#court-canvas').drawLine({
+		  strokeStyle: 'red',
+		  strokeWidth: 5,
+		  groups:['balltrail'],
+		  layer: true,
+		   x1: position_array[seq-5][30]*COURT_MULTIPLIER,
+		  y1: position_array[seq-5][31]*COURT_MULTIPLIER,
+		  x2: position_array[seq][30]*COURT_MULTIPLIER,
+		  y2: position_array[seq][31]*COURT_MULTIPLIER
+		});
+	};
+}
+
+//Clears all player trails
+function clearPlayerTrail() {
+	$('#court-canvas').removeLayerGroup('playertrail').drawLayers();
+};
+//Clears all ball trails
+function clearBallTrail() {
+	$('#court-canvas').removeLayerGroup('balltrail').drawLayers();
+};
+
+//Functionality for all the control buttons
+$(document).ready(function() {
+	$(".action-button").click(function() {
+		$('.action-button').removeClass('active');
+		$(this).addClass('active');
+		if ($(this).hasClass("button-ff")) {
+			if (SPEED == 2) {
+				SPEED = 4
+			} else {
+				SPEED = 2;
+			}
+			DIRECTION = 'forward';
+			PLAYING = true;
+		} else if ($(this).hasClass("button-rewind")) {
+			SPEED = 1;
+			DIRECTION = 'backward';
+			PLAYING = true;
+		} else if ($(this).hasClass("button-play")) {
+			SPEED = 1;
+			DIRECTION = 'forward';
+			PLAYING = true;
+		} else if ($(this).hasClass("button-pause")) {
+			SPEED = 0;
+			PLAYING = false;
+		} else if ($(this).hasClass("button-repeat")) {
+			sequence = 0
+			reDrawAtSequence(sequence);
+			$(".button-play").click()
+			$('.action-button').removeClass('active');
+			$('.button-play').addClass('active');
+			$("#progress-bar").css("width",'0%');
+		} 
+		$("#progress-bar").text(SPEED+"x")
+		generateHeatMap(sequence);
+	});
+	$(".heatmap-toggle").click(function() {
+		$(".heatmap-toggle").removeClass('button-action');
+		heatmap.store.setDataSet({ max: 10, data: []});
+		if ($(this).attr('id') == 'heatmap-none') {
+			heatmap_status = false;
+			$("#heatmapArea").css('display',"none");
+			$("#heatmap-none").addClass('button-action');
+		} else if ($(this).attr('id') == 'heatmap-offense') {
+			$("#heatmapArea").css('display',"block");
+			heatmap_status = 'offense';
+			$("#heatmap-offense").addClass('button-action');
+			generateHeatMap(sequence);
+		} else {
+			$("#heatmapArea").css('display',"block");
+			heatmap_status = 'ball';
+			$("#heatmap-ball").addClass('button-action');
+			generateHeatMap(sequence);
+		}
+	});
+	$(".playertrail-toggle").click(function() {
+		$(".playertrail-toggle").removeClass('button-action');
+		if ($(this).attr('id') == 'playertrail-none') {
+			$('#playertrail-none').addClass('button-action');
+			clearPlayerTrail();
+			player_trail = false;
+		} else {
+			$('#playertrail-on').addClass('button-action');
+			player_trail = true;
+			drawPlayerTrail(sequence);
+		}
+	});
+	$(".balltrail-toggle").click(function() {
+		$(".balltrail-toggle").removeClass('button-action');
+		if ($(this).attr('id') == 'balltrail-none') {
+			$('#balltrail-none').addClass('button-action');
+			clearBallTrail();
+			ball_trail = false;
+		} else {
+			$('#balltrail-on').addClass('button-action');
+			ball_trail = true;
+			drawBallTrail(sequence);
+		}
+	});
+});
+
+function loadPossession(possession_id) {
+	$('.button-pause').trigger('click');
+	$('#loader').fadeIn(100);
+	$.ajax({
+		url: '/loadpossession',
+		type: 'GET',
+		data: {"type":"possession","id":possession_id},
+		dataType: 'json',
+		success: function(response){
+			$('#loader').fadeOut(100);
+			//Set the active possession list items accordingly
+			var playname = response['meta_data']['possession_name']
+			$(".playname").removeClass('active');
+    		var activeplay = $(".play-names").find("[data-playname='" + playname + "']");
+    		$(activeplay).addClass("active");
+    		$(activeplay).trigger('click');
+    		$(".playid").removeClass('active');
+    		var activeplayid = $(".play-ids").find("[data-id='" + response['meta_data']['possession_id'] + "']");
+    		$(activeplayid).addClass("active");
+
+    		//Load in the data
+			position_array = response['play_array'];
+			reDrawAtSequence(1);
+			$('.button-play').trigger('click'); //Auto Play
+
+			//Set the metadata
+			$("#game-id").html("<p>"+response['meta_data']['game_id']+" <span>Quarter "+response['meta_data']['quarter']+"</span></p>");
+			$("#teams-id").html("<p>"+response['meta_data']['team_one']+" (Home) vs. "+response['meta_data']['team_two']+" (Away)</p>");
+			$("#possession-id").html("Possession: "+response['meta_data']['possession_id']+" ("+response['meta_data']['possession_name']+")");
+
+			//Load in the closeness data
+			closeness_array = response['closeness'];
+		},
+		error: function(response){
+			console.log(response);
+			alert("Error, failed to load object");
+			$('#loader').fadeOut(100);
+		}
+	});
+}
+
+//Helper functions sets the clocks time, takes in seconds and converts to minutes:seconds
+function setClock(time) {
+	minutes = leftPad(parseInt(time/60),2);
+	seconds = leftPad(Math.floor(time % 60),2);
+	$("#clock-minutes").text(minutes);
+	$("#clock-seconds").text(seconds);
+}
+
+//Helper function that pads numbers
+function leftPad(number, targetLength) {
+    var output = number + '';
+    while (output.length < targetLength) {
+        output = '0' + output;
+    }
+    return output;
+}
+
+</script>
+{% endblock %}
+
+{% block css %}
+<style>
+.court-row {
+	margin-top: 30px;
+	min-height: 400px;
+}
+#loader {
+	height: 403px;
+    width: 756px;
+    position:absolute;
+    z-index: 999;
+    display:none;
+    background-image: url("{{STATIC_URL}}img/blacktransparency.png");
+    text-align: center; 
+}
+#loader h2 {
+	padding-top: 130px;
+	color: white;
+	font-weight: 200;
+	font-size: 18px;
+}
+#court-canvas{
+	background: url("{{STATIC_URL}}img/bballcourt_full.png");
+	background-size: contain;
+	border:2px solid #ccc;
+	border-radius: 2px;
+	box-shadow: 0 0 2px #fff;
+	position:absolute;
+	z-index: 900;
+}
+#court-col {
+	padding: 0;
+	position:relative;
+}
+.controls-div {
+	border:2px solid #ccc;
+	width: 100%;
+	border-radius: 2px;
+	padding: 10px;
+	background: #efefef;
+	box-shadow: 0 0 2px #fff;
+	margin-bottom: 10px;
+	background-image: -ms-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: -moz-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: -o-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0, #FFFFFF), color-stop(1, #EFEFEF));
+	background-image: -webkit-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: linear-gradient(to bottom, #FFFFFF 0%, #EFEFEF 100%);
+}
+.subcontrols-div {
+	padding: 13px 10px;
+	border-top:1px solid #ddd;
+
+}
+a:active {
+	outline: none;
+}
+.nav-tabs > li.active > a, .nav-tabs > li.active > a:hover, .nav-tabs > li.active > a:focus {
+	border:2px solid #ccc;
+	margin-bottom: -4px;
+	border-bottom: 2px solid transparent;
+	outline: none;
+}
+.nav > li > a:hover, .nav > li > a:hover {
+	background: #f6f6f6;
+	border:1px solid #ccc;
+	border-bottom: none;
+}
+.nav-tabs {
+	margin-left: 16px;
+	font-size: 13px;
+	font-weight: 200;
+}
+.tab-pane {
+	background: #efefef;
+	border:2px solid #ccc;
+	box-shadow: 0 0 2px #fff;
+	margin-bottom: 10px;
+	background-image: -ms-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: -moz-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: -o-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0, #FFFFFF), color-stop(1, #EFEFEF));
+	background-image: -webkit-linear-gradient(top, #FFFFFF 0%, #EFEFEF 100%);
+	background-image: linear-gradient(to bottom, #FFFFFF 0%, #EFEFEF 100%);
+}
+.meta-data {
+	text-align: center;
+	padding-bottom: 15px;
+	padding-top: 15px;
+}
+.meta-data p {
+	margin: 3px 0;
+}
+.action-row {
+	text-align: center;
+}
+.action-button {
+	background: none;
+	border: none;
+	background-image: url("{{STATIC_URL}}img/play_icons.png");
+	width: 50px;
+	height: 50px;
+	margin: 0 3px;
+}
+.action-button:hover {
+	background-position: inherit 50px;
+}
+.button-pause {
+	background-position: 204px 0px;
+}
+.button-pause:hover { background-position: 204px 50px }
+.button-pause.active, .button-pause.active:hover{background-position: 204px 100px}
+.button-play {background-position: 102px 0px}
+.button-play:hover {background-position: 102px 50px}
+.button-play.active, .button-play.active:hover{background-position: 102px 100px}
+.button-ff {background-position: 255px 0px}
+.button-ff:hover {background-position: 255px 50px}
+.button-ff.active, .button-ff.active:hover{background-position: 255px 100px}
+.button-rewind {background-position: 51px 0px}
+.button-rewind:hover {background-position: 51px 50px}
+.button-rewind.active, .button-rewind.active:hover{background-position: 51px 100px}
+.button-repeat {background-position: 306px 0px}
+.button-repeat:hover {background-position: 306px 50px}
+.button-repeat.active, .button-repeat.active:hover{background-position: 306px 100px}
+
+.progress:hover {
+	cursor:pointer;
+}
+.progress-row {
+	padding-top: 20px;
+}
+.progress-bar {	
+	text-align: right;
+	padding-right: 5px;
+	font-weight: bold;
+}
+.progress-row .progress {
+	border:1px solid #ddd;
+	margin: 0 20px;
+	width: 300px;
+}
+#clock {
+	font-weight: bold;
+	font-size: 24px;
+	text-align: center;
+	margin-bottom: 10px;
+}
+#clock span {
+	padding: 5px 10px;
+	color: #eee;
+	display:inline-block;
+	border:2px solid #eee;
+	box-shadow: 0 0 2px #fff;
+	background: #444;
+	border-radius: 4px;
+	font-size: 20px;
+	font-weight: bold;
+}
+
+/* HeatMap */
+#heatmapArea{
+    height: 400px;
+    width: 752px;
+    position:absolute;
+    z-index: 999;
+}
+.heatmap-div, .playertrail-div, .balltrail-div {
+	text-align: center;
+}
+.heatmap-toggle {
+	position:relative;
+	text-align: center;
+}
+/*Events */
+#events{
+	overflow:scroll;
+	height: 300px;
+	padding: 20px;
+}
+#custom-events {
+	padding: 20px;
+}
+
+/*Possession Select */
+.select-type {
+	padding: 20px;
+
+}
+
+.select-type button{
+	font-size: 12px;
+	margin-left: 5px;
+}
+/* Play Select */
+#play-name .row {
+	padding: 0;
+	margin: 0;
+}
+#play-name .row div {
+	border-right:1px solid #ddd;
+	padding: 0;
+	margin: 0;
+}
+#play-name .row div a {
+	display:block;
+	background: #fff;
+	color: #333;
+	padding: 5px 5px 5px 5px
+}
+#play-name .row div a.active {
+	background: #333;
+	color: #fff;
+}
+#play-name .row div a:not(.active):hover {
+	background: #eee;
+	color: #000;
+	cursor:pointer;
+}
+#play-name .row div a:hover {
+	text-decoration: none;
+}
+#play-name .row div .playid {
+	display:none;
+}
+.play-names {
+	max-height: 500px;
+	overflow:scroll;
+}
+.play-ids {
+	max-height: 500px;
+	overflow:scroll;
+}
+
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="row court-row">
+	<div class="col-md-8 col-sm-8 col-xs-8"  id="court-col">
+		<div id="loader">
+			<h2>Loading New Possession. . . </h2>
+			<img src="{{STATIC_URL}}img/ajax-loader2.gif"/>
+		</div>
+		<div class="">
+			<canvas id="court-canvas" width="752" height="400"></canvas> 
+		</div>
+		<div id="heatmapArea"></div>
+	</div>
+	<div class="col-md-4 col-sm-4 col-xs-4" id="control-col">
+		<div class="controls controls-div">
+			<p id="clock"><span id="clock-minutes">0</span>:<span id="clock-seconds">00</span></p>
+			<div class="action-row control-div">
+				<button class="action-button button-rewind"></button>
+				<button class="action-button button-pause"></button>
+				<button class="action-button button-play active"></button>
+				<button class="action-button button-ff"></button>
+				<button class="action-button button-repeat"></button>
+			</div>
+			<div class="progress-row control-div">
+				<div class="progress">
+				  <div id="progress-bar" class="progress-bar progress-bar-warning" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+					1x
+				  </div>
+				</div>
+			</div>
+		</div>
+		<ul class="nav nav-tabs">
+		  <li class="active"><a href="#overview" data-toggle="tab">Overview</a></li>
+		  <li><a href="#possession-select" data-toggle="tab">Select By ID</a></li>
+		  <li><a href="#play-name" data-toggle="tab">Select By Name</a></li>
+		</ul>
+
+		<!-- Tab panes -->
+		<div class="tab-content">
+		  <div class="tab-pane active" id="overview">
+		  		<div class="meta-data">
+					<p id="game-id"></p>
+					<p id="teams-id"></p>
+					<p id="possession-id"></p>
+				</div>
+				<div class="subcontrols-div heatmap-div">
+					<button id="heatmap-none" class="heatmap-toggle button button-rounded button-action button-tiny">No Map</button>
+					<button id="heatmap-offense" class="heatmap-toggle button button-rounded button-tiny">Offense Heatmap</button>
+					<button id="heatmap-ball" class="heatmap-toggle button button-rounded button-tiny">Ball Heatmap</button>
+				</div>
+				<div class="subcontrols-div playertrail-div">
+					<button id="playertrail-none" class="playertrail-toggle button button-rounded button-action button-tiny">No Player Trail</button>
+					<button id="playertrail-on" class="playertrail-toggle button button-rounded button-tiny">Show Player Trail</button>
+				</div>
+				<div class="subcontrols-div balltrail-div">
+					<button id="balltrail-none" class="balltrail-toggle button button-rounded button-action button-tiny">No Ball Trail</button>
+					<button id="balltrail-on" class="balltrail-toggle button button-rounded button-tiny">Show Ball Trail</button>
+				</div>
+		  </div>
+		  <div class="tab-pane" id="possession-select">
+		  	<div class="select-type">
+		  		<p>Select by Possession ID</p>
+	  			<table>
+	  				<tr>
+	  					<td><input id="possession_id_input" name="id" class="form-control" type="number" placeholder="Possession ID"></td>
+	  					<td><button id="possession_id_button" class="button button-rounded button-action">Watch Play</button></td>
+	  				</tr>
+	  			</table>
+		  	</div>
+
+		  </div>
+		  <div class="tab-pane" id="play-name">
+		  	<div class="row">
+		  		<div class="col-md-6 play-names">
+				{% for playname in possession_names %}
+		  			<a class="playname" data-playname="{{playname.0}}">{{playname.0}} ({{playname.1}})</a>
+				{% endfor %}
+		  		</div>
+		  		<div class="col-md-6 play-ids">
+		  		{% for pos in possessions %}
+		  			<a class="playid" data-id="{{pos.id}}" data-playname="{{pos.play.play_name}}">ID: {{pos.id}} ({{pos.length}} seconds)</a>
+				{% endfor %}
+		  		</div>
+		  </div>
+		</div>
+	</div>
+</div>	
+{% endblock %}
