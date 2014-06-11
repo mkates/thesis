@@ -8,51 +8,61 @@ import inspect as inspect
 ##########################################################
 
 # PlayID: 32
-# PUNCH = [128,320,987,2780,3187,4445,4596,5133,5581,5714]
+#PUNCH = [128,320,987,2780,3187,4445,4596,5133,5581,5714]
 
-ELBOW = [100,105,137,510,968,1200,1217,1218,1220,1223,2822,3394,3398,3426,3435,3438,3444,4118,4136,4180,4182,4184,4411,4417,4434,4479,4485,4579,4582,4609,4646,5148,5214,5451,5590,5592,5631,5637,5682,5706,5735,5855,6025,6201,6205,6251,6294,6299,6300,6312,6315,6317,6318,6334,6643,7004,7008,7080,7356,7366,7376,7385]
+ELBOW = [100,105,137,510,968,1200,1218,1220,1223,2822,3394,3398,3426,3435,3438,3444,4118,4136,4180,4182,4184,4411,4417,4434,4479,4485,4579,4582,4609,4646,5148,5214,5451,5590,5592,5631,5637,5682,5706,5735,5855,6025,6201,6205,6251,6294,6299,6300,6312,6315,6317,6318,6334,6643,7004,7008,7080,7356,7366,7376,7385]
 
 FLOPPY = [97,111,117,190,198,200,292,338,350,499,519,920,921,927,971,990,1213,1253,2751,2771,2787,3367,3401,3921,3942,3943,3944,3946,3983,3985,4003,4004,4120,4135,4145,4405,4412,4416,4423,4428,4433,4478,4603,5142,5196,5436,5649,5843,5871,6026,6043,6064,6264,6672,6673,6713,6998,7009,7026,7028,7355,7406,8771,8973,8999,9129,9237,9241,9281,9287,9453,9798,10085,10101]
 
 HORNS = [181,182,183,184,185,1210,1211,1212,1243,1258,2826,4137,4138,4183,4488,5477,5737,5921,6094,6346,6347,7027,7077,8841,8845,9164,9196,9208,9213,9219,9786,10093]
 
-#This is a tough play to differentiate
+# This is a tough play to differentiate
 INVERT = [107, 334, 919, 1202, 1204, 1249, 3237, 3836, 3933, 3939, 4113, 4179, 4399, 4403, 4425, 4447, 4481, 4490, 4614, 4655, 5400, 5660, 5661, 5680, 5700, 5719, 5724, 5842, 6086, 6231, 7030, 8812, 9014, 9147, 9192, 9230, 9264, 10114, 10134]
 
 DELAY = [118,215,323,1194,2749,2785,2788,3212,3236,3244,3853,3870,3906,3907,3908,3909,3920,3974,4006,4442,4634,4636,4654,5138,5139,5441,5617,5626,5627,5628,5712,5733,5888,5899,5912,5916,6080,6131,6134,6168,6182,6188,6268,6719,6999,7069,7071,7084,7400,7458,8564,8732,8770,8825,8826,8827,8969,8970,8971,8989,9163,9177,9211,9212,9258,9298,9302,9397,9398,9399,9400,9404,9486,9492,9493,9494,9527,9581,9875,10133]
 
-PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',98:'INVERT',92:'DELAY',32:'PUNCH'}
+
+### USE AS NOISE (NOT HAND LOOKED AT TO ENSURE THEY RAN THE PLAY) ###
+
+DROP = [159, 170, 242, 308, 352, 359, 527, 918, 928, 932, 938, 967, 983, 984, 2773, 2789, 3865, 3866, 3977, 3979, 4007, 4008, 4165, 4668, 4669, 5141, 5158, 5453, 5603, 5650, 5696, 5865, 5869, 5908, 6033, 6057, 6083, 6128, 6162, 6163, 6224, 6230, 6322, 6350, 6352, 6679, 6696, 6781, 7003, 7054, 7079, 7449, 7450, 7787, 8548, 8703, 8707, 8708, 8730, 8731, 8736, 8768, 8958, 8972, 9019, 9111, 9352, 9353, 9356, 9379, 9815, 9847]
+DRAG = [157, 227, 2809, 3388, 3446, 3837, 4011, 4663, 5407, 5444, 5620, 6158, 6302, 7057, 7403, 8792, 9029, 9326, 9436, 9441, 9848]
+
+RANDOM = [154, 167, 180, 193, 202, 214, 230, 232, 289, 290, 297, 336, 916, 931, 943, 986, 1000, 1008, 1199, 1201, 1209, 1245, 2746, 2759, 2766, 2768, 2772, 2774, 2795, 2802, 3195, 3200, 3211, 3235, 3240, 3241, 3256, 3259, 3263, 3839, 3850, 3887, 3914, 3931, 3954, 3980, 4111, 4126, 4146, 4150, 4161, 4186, 4188, 4193, 4467, 4480, 4482, 4599, 4628, 4635, 4642, 4644, 4659, 4686, 5150, 5159, 5168, 5188, 5191, 5215, 5219, 5404, 5434, 5438, 5442, 5446, 5601, 5644, 5732, 5736, 5740, 5742, 5748, 5749, 5863, 5879, 5880, 5903, 5905, 6050, 6056, 6060, 6072, 6074, 6099, 6136, 6149, 6161, 6173, 6177, 6181, 6187, 6189, 6216, 6217, 6260, 6273, 6289, 6297, 6301, 6308, 6326, 6333, 6342, 6640, 6644, 6652, 6659, 6668, 6676, 6678, 6702, 6994, 7015, 7039, 7044, 7055, 7060, 7076, 7365, 7382, 7386, 7401, 7409, 7417, 7429, 7745, 7746, 7750, 7786, 8550, 8673, 8683, 8695, 8727, 8760, 8783, 8788, 8793, 8838, 8962, 9007, 9026, 9085, 9127, 9130, 9131, 9133, 9161, 9169, 9199, 9214, 9220, 9253, 9286, 9294, 9301, 9311, 9313, 9325, 9330, 9355, 9360, 9362, 9391, 9394, 9395, 9401, 9428, 9430, 9439, 9482, 9521, 9532, 9582, 9787, 9794, 9802, 9809, 9821, 10104, 10107, 10113, 10118, 10127, 10131]
+PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',92:'INVERT',98:'DELAY',32:'PUNCH',51:'DROP',7:'DRAG',501:'RANDOM'}
 
 #####################################
-######### Main Run Function #########
+####### Main Run Function ###########
 #####################################
 
 def basePositions():
-	plays = [ELBOW,FLOPPY]
-	dic={'ELBOW':ELBOW,'FLOPPY':FLOPPY,'HORNS':HORNS,'INVERT':INVERT,'DELAY':DELAY}
+	dic = {'RANDOM':RANDOM,'ELBOW':ELBOW,'FLOPPY':FLOPPY,'HORNS':HORNS,'INVERT':INVERT,'DELAY':DELAY,'DROP':DROP,'DRAG':DRAG}
 	for key,value in dic.iteritems():
 		relevant_possession_ids = value
 		possessions = Possession.objects.filter(id__in=relevant_possession_ids)
 		for possession in possessions:
-			possession.positions = getPositions(possession)
+			try:
+				possession.positions = getPositions(possession)
+				if key == 'RANDOM':
+					possession.play.play_id = 501
+			except:
+				print possession.id
 		dic[key] = list(possessions)
 		print str(key)+" complete"
+	#ALL = list(dic['FLOPPY'])+list(dic['INVERT'])+list(dic['HORNS'])+list(dic['ELBOW'])+list(dic['DELAY'])+list(dic['DROP'])+list(dic['DRAG'])+list(dic['RANDOM'])
 	return dic
 
 def run(basePositions):
-	vectors = []
-	results = []
-	possessionids = []
+	vectors,results,possessionids = [],[],[]
 	count = 0
 	for possession in basePositions:
 		play_id = possession.play.play_id
 		if play_id in PLAYS.keys():
-			#vector = buildUniqueMeasureVectors(possession.positions)+buildClosenessVectors(possession.positions)
-			vector = buildUniqueMeasureVectors(possession.positions)
+			vector = buildUniqueMeasureVectors(possession.positions)+buildClosenessVectors(possession.positions)+buildPositionVectors(possession.positions)
 			vectors.append(vector)
 			results.append(play_id)
 			possessionids.append(possession.id)
 		else: #Catch any plays that aren't in set, otherwise ML algorithm will break
+			print possession
 			print 'WRONG PLAY: '+str(play_id)+" "+str(possession.id)
 	ml.runAnalysis(vectors,results,possessionids)
 	# for i in range(len(vectors)):
@@ -164,8 +174,8 @@ def buildPositionVectors(easy_positions):
 ### Generates a 2d vector that has counts for player positions in the possession ###
 def generatePositionVector(easy_positions):
 	average_positions = averagePositionOverTime(easy_positions)
-	number_boxes = 3
-	box_width = 15
+	number_boxes = 5
+	box_width = 10
 	features = [0]*(((number_boxes**2)*2)+1)
 	for objs in average_positions:
 		x_value = int(round(float(objs[0])/box_width))
@@ -195,7 +205,7 @@ def buildUniqueMeasureVectors(easy_positions):
 	play_end = easy_positions['play_end']
 	poss_length = play_start-play_end
 	quantity = 4
-	times = [play_start,max(play_start-2,play_end),max(play_start-4,play_end),max(play_start-6,play_end)]
+	times = [play_start,max(play_start-1,play_end),max(play_start-2,play_end),max(play_start-3,play_end),max(play_start-4,play_end),max(play_start-5,play_end),max(play_start-6,play_end)]
 	ballside,inside = [0]*quantity, [0]*quantity
 	tracker = 0
 	for easy_position in easy_positions['easy_positions']:
@@ -283,18 +293,19 @@ def findClosenssInstances(player_no_1,player_no_2,easy_positions,THRESHOLD):
 	# Extract details from instances, including the min distance, length, boolean if on ball, etc. 
 	objs = []
 	for instance in instances:
-		min_distance = (None,10000)
-		length = instance[0][0]-instance[-1][0]
-		on_ball = False
-		first_instance = instance[0]
-		if measure(first_instance[3],first_instance[4])['distance'] < 3 or measure(first_instance[3],first_instance[5])['distance'] < 3:
-			on_ball=True
-		for inst in instance:
-			if inst[1] < min_distance[1]:
-			 	min_distance = inst
-		if length > .2:
-			dict = {'start':instance[0][0],'end':instance[-1][0],'on_ball':on_ball,'object':min_distance,'length':length,'player_1':player_no_1,'player_2':player_no_2}
-			objs.append(dict)
+		if instance:
+			min_distance = (None,10000)
+			length = instance[0][0]-instance[-1][0]
+			on_ball = False
+			first_instance = instance[0]
+			if measure(first_instance[3],first_instance[4])['distance'] < 3 or measure(first_instance[3],first_instance[5])['distance'] < 3:
+				on_ball=True
+			for inst in instance:
+				if inst[1] < min_distance[1]:
+				 	min_distance = inst
+			if length > .2:
+				dict = {'start':instance[0][0],'end':instance[-1][0],'on_ball':on_ball,'object':min_distance,'length':length,'player_1':player_no_1,'player_2':player_no_2}
+				objs.append(dict)
 	return objs
 
 

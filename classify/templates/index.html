@@ -263,7 +263,7 @@ function drawBallTrail(sequence) {
 		  strokeWidth: 5,
 		  groups:['balltrail'],
 		  layer: true,
-		   x1: position_array[seq-5][30]*COURT_MULTIPLIER,
+		  x1: position_array[seq-5][30]*COURT_MULTIPLIER,
 		  y1: position_array[seq-5][31]*COURT_MULTIPLIER,
 		  x2: position_array[seq][30]*COURT_MULTIPLIER,
 		  y2: position_array[seq][31]*COURT_MULTIPLIER
@@ -369,6 +369,7 @@ function loadPossession(possession_id) {
 		data: {"type":"possession","id":possession_id},
 		dataType: 'json',
 		success: function(response){
+			console.log(response);
 			$('#loader').fadeOut(100);
 			//Set the active possession list items accordingly
 			var playname = response['meta_data']['possession_name']

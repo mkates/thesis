@@ -24,3 +24,9 @@ First Implementation:
 -> Two sets of features, number of close encounters with the ball and number of close encounters without the ball for a given region
 
 *** On closeness algorithm, sometimes it jumps slightly if a player goes outside the min distance and comes back in 
+
+
+1. Run a one vs all SVM classifier on each of the plays, with a confidence for each point.
+This will give, for each play, a distance interval for each play, for example [60% Floppy, 20% Elbow, Not, Not, Not]
+
+2. 
