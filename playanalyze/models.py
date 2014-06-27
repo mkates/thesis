@@ -100,7 +100,7 @@ class Event(models.Model):
 		return EVENT_KEY[self.eventid]
 
 	def __unicode__(self):
-		return "Game: "+str(self.game_id)+" Event: "+str(self.eventid)+" Clock: "+str(self.clock)
+		return "Game: "+str(self.game_id)+" Event: "+str(self.eventid)+", "+self.event_name()+" Clock: "+str(self.clock)
 
 class Possession(models.Model):
 	play = models.ForeignKey(CelticPlay,null=True,blank=True)

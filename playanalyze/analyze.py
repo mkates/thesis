@@ -35,7 +35,8 @@ PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',92:'INVERT',98:'DELAY',32:'PUNCH',51:
 #####################################
 
 def basePositions():
-	dic = {'RANDOM':RANDOM,'ELBOW':ELBOW,'FLOPPY':FLOPPY,'HORNS':HORNS,'INVERT':INVERT,'DELAY':DELAY,'DROP':DROP,'DRAG':DRAG}
+	dic = {'RANDOM':RANDOM,'ELBOW':ELBOW,'FLOPPY':FLOPPY,'HORNS':HORNS,'INVERT':INVERT,'DELAY':DELAY,'DROP':DROP}
+	dic = {'ELBOW':ELBOW[0:4]}
 	for key,value in dic.iteritems():
 		relevant_possession_ids = value
 		possessions = Possession.objects.filter(id__in=relevant_possession_ids)
@@ -78,16 +79,45 @@ def buildClosenessVectors(possession_obj):
 	snapShotPositions = buildPositionVectors(possession_obj)
 	number_boxes = 5
 	box_width = 10
-	features = [0]*(((number_boxes**2)*2)+1)
+	features = [0]*(((number_boxes**2))+1)
 	for objs in closeness_obj:
 		midpoint = objs['object'][2]
-		x_value = int(round(float(midpoint[0])/box_width))
-		y_value = int(round(float(midpoint[1])/box_width))
+		x_value = min(number_boxes-1,int(round(float(midpoint[0])/box_width)))
+		y_value = min(number_boxes-1,int(round(float(midpoint[1])/box_width)))
 		index = (x_value*number_boxes)+y_value
 		if objs['on_ball']: # Use a single counter for on ball screens
 			features[-1] += 1
 		features[index] += 1
 	return features
+###########################################################################
+######################## Build Ball Positions #############################
+###########################################################################
+def eventVectors(possession_obj):
+	# Relevant Event IDs are as follows:
+	# 21:Dribble, 22:Pass, 23:Possession
+	play_start = easy_positions['play_start']
+	play_end = easy_positions['play_end']
+	poss_length = play_start-play_end
+	events = easy_positions['events']
+	for event in events:
+		if event.eventid == 22:
+			original_ball_position = getclosestInstance(event.time+.2)
+			final_ball_position = getclosestInstance(event.time-.2)
+	
+def getclosestInstance(possession_obj,time):
+	closest_instance = None
+	delta = None
+	for easy_position in easy_positions:
+		if not delta or abs(easy_position['time']-time) < delta:
+			delta = abs(easy_position['time']-time)
+			closest_instance = easy_position
+	return closest_instance
+
+def passDirection(original,final):
+	pass
+
+
+
 
 ###########################################################################
 ######### Functions to get player positions throughout the possession #####
@@ -123,10 +153,16 @@ def getPositions(possession):
 	easy_positions=[]
 	for pos in positions:
 		easy_positions.append(easyPosition(pos,far_side_of_court))
-	return {'easy_positions':easy_positions,'far_side_of_court':far_side_of_court,'play_start':play_start,'play_end':play_end,'positions':positions}
 
-
-
+	# Get all the associated events as well with a possession
+	events = Event.objects.filter(game_id=possession.game_number,
+		quarter=possession.period,
+		clock__lt=possession.time_start,
+		clock__gt=possession.time_end
+	).order_by("clock").reverse()
+	for event in events:
+		print event
+	return {'easy_positions':easy_positions,'far_side_of_court':far_side_of_court,'play_start':play_start,'play_end':play_end,'positions':positions,'events':events}
 ### A dictionary with normalized positions (to adjust for near or far side of the court) as well as ball and time information ###
 def easyPosition(position,flipped):
 	if position.team_one_id == 2: #If Celtics are the home team, they are team one
@@ -160,27 +196,32 @@ def buildPositionVectors(easy_positions):
 	play_start = easy_positions['play_start']
 	play_end = easy_positions['play_end']
 	poss_length = play_start-play_end
-	snap_range_end = [play_start-(poss_length*.25),play_start-(poss_length*.5),play_start-(poss_length*.75)]
-	groups = [[],[],[]]
+	times = [play_start,max(play_start-1,play_end),max(play_start-2,play_end),max(play_start-3,play_end),max(play_start-4,play_end)]
+	positions = [[0]*25]*len(times)
+	tracker = 0
 	for easy_position in easy_positions['easy_positions']:
-		if easy_position['time'] >= snap_range_end[0]:
-			groups[0].append(easy_position)
-		elif easy_position['time'] >= snap_range_end[1]:
-			groups[1].append(easy_position)
-		elif easy_position['time'] >= snap_range_end[2]:
-			groups[2].append(easy_position)
-	return generatePositionVector(groups[0])+generatePositionVector(groups[1])+generatePositionVector(groups[2])
+		if times[tracker]+.1 >= easy_position['time']:
+			features = generatePositionVector(easy_position)
+			positions[tracker] = features
+			tracker += 1
+		if tracker == len(times):
+			break
+	vector_positions = []
+	for pos in positions:
+		for p in pos:
+			vector_positions.append(p)
+	return vector_positions
 
 ### Generates a 2d vector that has counts for player positions in the possession ###
-def generatePositionVector(easy_positions):
-	average_positions = averagePositionOverTime(easy_positions)
+def generatePositionVector(easy_position):
+	#average_positions = averagePositionOverTime(easy_positions)
 	number_boxes = 5
 	box_width = 10
-	features = [0]*(((number_boxes**2)*2)+1)
-	for objs in average_positions:
-		x_value = int(round(float(objs[0])/box_width))
-		y_value = int(round(float(objs[1])/box_width))
-		index = (x_value*number_boxes)+y_value
+	features = [0]*((number_boxes**2))
+	for objs in easy_position['team_positions']:
+		x_value = min(number_boxes-1,int(round(float(objs[0])/box_width)))
+		y_value = min(number_boxes-1,int(round(float(objs[1])/box_width)))
+		index = ((x_value)*number_boxes)+y_value
 		features[index] += 1
 	return features
 
@@ -204,16 +245,15 @@ def buildUniqueMeasureVectors(easy_positions):
 	play_start = easy_positions['play_start']
 	play_end = easy_positions['play_end']
 	poss_length = play_start-play_end
-	quantity = 4
 	times = [play_start,max(play_start-1,play_end),max(play_start-2,play_end),max(play_start-3,play_end),max(play_start-4,play_end),max(play_start-5,play_end),max(play_start-6,play_end)]
-	ballside,inside = [0]*quantity, [0]*quantity
+	ballside,inside = [0]*len(times), [0]*len(times)
 	tracker = 0
 	for easy_position in easy_positions['easy_positions']:
 		if times[tracker]+.1 >= easy_position['time']:
 			ballside[tracker] = numberOfBallSidePlayers(easy_position)
 			inside[tracker] = playersInside(easy_position)
 			tracker += 1
-		if tracker == quantity:
+		if tracker == len(times):
 			break
 	pc = playersClose(easy_positions)
 	return ballside+inside

@@ -15,11 +15,11 @@ from random import shuffle
 PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',92:'INVERT',98:'DELAY',32:'PUNCH',51:'DROP',7:'DRAG',501:'RANDOM'} # Used for Pretty Print
 
 ### Toggle Classifiers ###
-KNN = False
-SVM = False
-OVO = False
+KNN = True
+SVM = True
+OVO = True
 OVA = True
-ITERATIONS = 1
+ITERATIONS = 3
 
 #########################################################
 ### Main Class To Run Classification Algorithm ##########
@@ -200,7 +200,7 @@ def ovaClassifier(X_train,X_test,y_train,y_test):
     svm_dict = {}
     for label in labels:
         new_y_train = [(1 if y==label else 0) for y in y_train]
-        clf = svm.SVC(C=5,class_weight={1:3,0:1},probability=True)
+        clf = svm.SVC(C=5,class_weight={1:10,0:1},probability=True)
         clf.fit(X_train,new_y_train)
         svm_dict[label] = clf
     # 2. Now Run every test point through each one vs. all
@@ -227,29 +227,20 @@ def ovaClassifier(X_train,X_test,y_train,y_test):
     cm = confusion_matrix(labels, guesses)
     return {'score':score,'confusion_matrix':cm}
 
-    # 3. Handle the counts and probabilities of each test point
-    counts = [0,0,0,0,0,0,0,0,0]
-    for all_result in all_results:
-        count = 0
-        for rank in all_result['results']:
-            if rank[0] > 0:
-                count +=1
-        counts[count]+=1
-    print counts
-
 def predictOVA(outcome):
+    count = 0
     highest_prob = 0
     handle = 501
     for rank in outcome['results']:
         if rank[0] > 0 and rank[1]>highest_prob:
             highest_prob = rank[1]
             handle = rank[2]
-    return handle
+            count += 1
+    if count > 1:
+        return None
+    else:
+        return handle
         
-def filterDataOVA(X_train,y_train,label):
-    pass
-
-
 #########################################################
 ######### Test Classification Algorithm #################
 #########################################################
