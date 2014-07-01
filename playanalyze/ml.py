@@ -19,6 +19,7 @@ KNN = True
 SVM = True
 OVO = True
 OVA = True
+LEAVE_ONE_OUT = False
 ITERATIONS = 3
 
 #########################################################
@@ -37,7 +38,50 @@ def runAnalysis(vectors,labels,possessionids):
     ### One v. All Algorithm
     if OVA:
         runOVA(vectors,labels,possessionids)
+    ### Leave One Out Testing Algorithm
+    if LEAVE_ONE_OUT:
+        runLOO(vectors,labels,possessionids)
+        #runLOO([[1,2,3,4],[1,3,5,7],[1,4,7,10],[98,99,100,101]],[1,2,3,2],possessionids)
     return
+
+#########################################################
+######### Leave One Out Algorithm #######################
+#########################################################
+
+
+def runLOO(vectors,labels,possessionids):
+    print '---------------------------'
+    print 'Leave One Out OVA Algorithm'
+    average_score = 0.0
+    counter = 0.0
+    for index,vector in enumerate(vectors):
+        ### Pop out the index to create the training and test data ###
+        tmp_vectors = vectors[:]
+        X_test= [tmp_vectors.pop(index)]
+        X_train = tmp_vectors
+        tmp_labels = labels[:]
+        y_test= [tmp_labels.pop(index)]
+        y_train = tmp_labels
+        results = ovaClassifier(X_train,X_test,y_train,y_test)
+        average_score += results['score']
+        counter += 1
+        if counter % 50 == 0:
+            print counter
+    print 'FINAL SCORE: '+str(average_score/counter)
+    return
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #########################################################
 ######### KNN Classification Algorithm ##################
@@ -200,7 +244,7 @@ def ovaClassifier(X_train,X_test,y_train,y_test):
     svm_dict = {}
     for label in labels:
         new_y_train = [(1 if y==label else 0) for y in y_train]
-        clf = svm.SVC(C=5,class_weight={1:10,0:1},probability=True)
+        clf = svm.SVC(C=2,class_weight={1:3,0:1},probability=True)
         clf.fit(X_train,new_y_train)
         svm_dict[label] = clf
     # 2. Now Run every test point through each one vs. all
@@ -237,10 +281,10 @@ def predictOVA(outcome):
             handle = rank[2]
             count += 1
     if count > 1:
-        return None
+        return handle # More than one match, now it just returns the highest probability match
     else:
         return handle
-        
+
 #########################################################
 ######### Test Classification Algorithm #################
 #########################################################

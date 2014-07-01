@@ -36,7 +36,7 @@ PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',92:'INVERT',98:'DELAY',32:'PUNCH',51:
 
 def basePositions():
 	dic = {'RANDOM':RANDOM,'ELBOW':ELBOW,'FLOPPY':FLOPPY,'HORNS':HORNS,'INVERT':INVERT,'DELAY':DELAY,'DROP':DROP}
-	dic = {'ELBOW':ELBOW[0:4]}
+	#dic = {'ELBOW':ELBOW[0:10]}
 	for key,value in dic.iteritems():
 		relevant_possession_ids = value
 		possessions = Possession.objects.filter(id__in=relevant_possession_ids)
@@ -50,6 +50,7 @@ def basePositions():
 		dic[key] = list(possessions)
 		print str(key)+" complete"
 	#ALL = list(dic['FLOPPY'])+list(dic['INVERT'])+list(dic['HORNS'])+list(dic['ELBOW'])+list(dic['DELAY'])+list(dic['DROP'])+list(dic['DRAG'])+list(dic['RANDOM'])
+	#ALL = list(dic['FLOPPY'])+list(dic['INVERT'])+list(dic['HORNS'])+list(dic['ELBOW'])+list(dic['DELAY'])+list(dic['RANDOM'])
 	return dic
 
 def run(basePositions):
@@ -58,7 +59,7 @@ def run(basePositions):
 	for possession in basePositions:
 		play_id = possession.play.play_id
 		if play_id in PLAYS.keys():
-			vector = buildUniqueMeasureVectors(possession.positions)+buildClosenessVectors(possession.positions)+buildPositionVectors(possession.positions)
+			vector = buildUniqueMeasureVectors(possession.positions)+buildClosenessVectors(possession.positions)+buildPositionVectors(possession.positions)+buildPassVectors(possession.positions)
 			vectors.append(vector)
 			results.append(play_id)
 			possessionids.append(possession.id)
@@ -89,35 +90,60 @@ def buildClosenessVectors(possession_obj):
 			features[-1] += 1
 		features[index] += 1
 	return features
+
+
 ###########################################################################
-######################## Build Ball Positions #############################
+######################## Build Pass Vectors ###############################
 ###########################################################################
-def eventVectors(possession_obj):
-	# Relevant Event IDs are as follows:
-	# 21:Dribble, 22:Pass, 23:Possession
-	play_start = easy_positions['play_start']
-	play_end = easy_positions['play_end']
+def buildPassVectors(possession_obj):
+	# Relevant Event IDs are as follows:21:Dribble, 22:Pass, 23:Possession
+	play_start = possession_obj['play_start']
+	play_end = possession_obj['play_end']
 	poss_length = play_start-play_end
-	events = easy_positions['events']
+	events = possession_obj['events']
+	### Iterate through every event in the possession, generate a list of pass objects ###
+	passes = []
 	for event in events:
-		if event.eventid == 22:
-			original_ball_position = getclosestInstance(event.time+.2)
-			final_ball_position = getclosestInstance(event.time-.2)
-	
-def getclosestInstance(possession_obj,time):
+		if event.eventid == 22 and event.clock < play_start and event.clock > play_end:
+			original_ball_position = getPassMetrics(possession_obj,event.clock+.15)
+			final_ball_position = getPassMetrics(possession_obj,event.clock-.15)
+			distance = measure(original_ball_position['ball'],final_ball_position['ball'])['distance']
+			up = True if original_ball_position['ball'][0]-final_ball_position['ball'][0] < 0 else False
+			right = True if original_ball_position['ball'][1]-final_ball_position['ball'][1] < 0 else False
+			time_into_play = play_start-event.clock
+			#print 'Time: '+str(event.clock)+' Start: '+str(original_ball_position['ball'])+" End: "+str(final_ball_position['ball'])
+			passes.append({'distance':distance,'start':original_ball_position['ball'],'end':final_ball_position['ball'],'time_into_play':time_into_play,'time':event.clock,'up':up,'right':right})
+	### Build the vectors from the pass objects ###
+	times = [play_start,max(play_start-1,play_end),max(play_start-2,play_end),max(play_start-3,play_end),max(play_start-4,play_end),max(play_start-5,play_end),max(play_start-6,play_end),max(play_start-7,play_end),max(play_start-8,play_end)]
+	pass_array = [0,0,0]*len(times)
+	for index,passe in enumerate(passes):
+		## Two options: just go chronologically, or you can also do it in time segments (I chose time segments) ##
+		pass_type = passType(passe)
+		for index,time in enumerate(times):
+			pass_time = passe['time'] 
+			if pass_time < time:
+				pass_array[index*3+pass_type] += 1
+			break
+	return pass_array
+
+def getPassMetrics(possession_obj,time):
 	closest_instance = None
 	delta = None
+	easy_positions = possession_obj['easy_positions']
 	for easy_position in easy_positions:
 		if not delta or abs(easy_position['time']-time) < delta:
 			delta = abs(easy_position['time']-time)
 			closest_instance = easy_position
 	return closest_instance
 
-def passDirection(original,final):
-	pass
-
-
-
+def passType(passe):
+	# For initial try, start with three main pass types: handoff=0, entry=1, and a reset pass=2 #
+	if passe['distance'] < 3:
+		return 0
+	if not passe['up']:
+		return 1
+	else:
+		return 2
 
 ###########################################################################
 ######### Functions to get player positions throughout the possession #####
@@ -160,8 +186,6 @@ def getPositions(possession):
 		clock__lt=possession.time_start,
 		clock__gt=possession.time_end
 	).order_by("clock").reverse()
-	for event in events:
-		print event
 	return {'easy_positions':easy_positions,'far_side_of_court':far_side_of_court,'play_start':play_start,'play_end':play_end,'positions':positions,'events':events}
 ### A dictionary with normalized positions (to adjust for near or far side of the court) as well as ball and time information ###
 def easyPosition(position,flipped):
