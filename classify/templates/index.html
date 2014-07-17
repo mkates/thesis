@@ -408,6 +408,7 @@ function setClock(time) {
 	seconds = leftPad(Math.floor(time % 60),2);
 	$("#clock-minutes").text(minutes);
 	$("#clock-seconds").text(seconds);
+	$("#clock-total").text(time);
 }
 
 //Helper function that pads numbers
@@ -673,6 +674,7 @@ a:active {
 	</div>
 	<div class="col-md-4 col-sm-4 col-xs-4" id="control-col">
 		<div class="controls controls-div">
+			<p id="clock-total"></p>
 			<p id="clock"><span id="clock-minutes">0</span>:<span id="clock-seconds">00</span></p>
 			<div class="action-row control-div">
 				<button class="action-button button-rewind"></button>

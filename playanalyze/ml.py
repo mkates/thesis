@@ -2,25 +2,27 @@ import numpy as np
 import pylab as pl
 import math
 from matplotlib.colors import ListedColormap
-from sklearn import neighbors, cross_validation,datasets, svm
+from sklearn import neighbors, cross_validation,datasets, svm, linear_model
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 from prettytable import PrettyTable
 from random import shuffle
 
+
 #########################################################
 ######### Different Machine Learning Algorithms #########
 #########################################################
 
-PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',92:'INVERT',98:'DELAY',32:'PUNCH',51:'DROP',7:'DRAG',501:'RANDOM'} # Used for Pretty Print
+PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',92:'INVERT',98:'DELAY',32:'PUNCH',51:'DROP',7:'DRAG',501:'RANDOM',9:'POSTUP'} # Used for Pretty Print
 
 ### Toggle Classifiers ###
-KNN = True
-SVM = True
-OVO = True
+KNN = False
+SVM = False
+OVO = False
 OVA = True
+RANKED = True
 LEAVE_ONE_OUT = False
-ITERATIONS = 3
+ITERATIONS = 1
 
 #########################################################
 ### Main Class To Run Classification Algorithm ##########
@@ -38,6 +40,9 @@ def runAnalysis(vectors,labels,possessionids):
     ### One v. All Algorithm
     if OVA:
         runOVA(vectors,labels,possessionids)
+    ### Ranking Algorithm
+    if RANKED:
+        runRANKED(vectors,labels,possessionids)
     ### Leave One Out Testing Algorithm
     if LEAVE_ONE_OUT:
         runLOO(vectors,labels,possessionids)
@@ -70,18 +75,45 @@ def runLOO(vectors,labels,possessionids):
     print 'FINAL SCORE: '+str(average_score/counter)
     return
 
+#########################################################
+######### Ranking Algorithm #############################
+#########################################################
 
-
-
-
-
-
-
-
-
-
-
-
+def runRANKED(vectors,labels,possessionids):
+    X,y,ids = vectors,labels,possessionids
+    unique_labels = len(set(labels))
+    ### Keep a dictionary of each play and number of first and second correct guesses
+    correct = [0]*unique_labels
+    individual_plays = {}
+    for key,value in PLAYS.items():
+        individual_plays[key] = [0]*unique_labels
+    for i in range(ITERATIONS):
+        shuffled = shuffleList(X,y) # Shuffle the list to increase randomness
+        X,y,ids = np.array(shuffled[0]),np.array(shuffled[1]),np.array(ids)
+        skf = cross_validation.StratifiedKFold(y,5) # Test using stratified split
+        score,count = 0,0
+        for train_index,test_index in skf:
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+            results = ovaClassifier(X_train,X_test,y_train,y_test)
+            all_results = results['all_results']
+            labels = results['labels']
+            for idx in range(len(all_results)):
+                guesses = [elm[2] for elm in sorted(all_results[idx]['results'],reverse=True)]
+                label = labels[idx]
+                index = guesses.index(label)
+                correct[index] += 1
+                individual_plays[label][index] += 1
+    print '\n Ranked Performance (i.e. When elbow was the result, you guessed it correctly X times on the first try and Y times on the second try)'
+    x = PrettyTable(['']+["Guess #"+str(i) for i in range(1,unique_labels+1)])
+    for idx,value in enumerate(set(labels)):
+        x.add_row([PLAYS[value]]+individual_plays[value])
+    x.padding_width = 1 # One space between column edges and contents (default)
+    print x
+    print '\nRanked For Performance'
+    print [str(round(correct[idx]*100/float(sum(correct)),1))+"%" for idx,value in enumerate(correct)]
+    #x.add_row()
+    return
 
 #########################################################
 ######### KNN Classification Algorithm ##################
@@ -111,7 +143,6 @@ def kNeighborsClassifier(X_train,X_test,y_train,y_test,posid,variable1):
             right += 1
         else:
             wrong += 1
-            # Following is used to get the possession id of a misclassified play
             #print "Wrongly Classified Pos "+str(posid[c])+": "+str(X_test[c])+":"+PLAYS[y_test[c]]+" | Predict: "+PLAYS[(clf.predict(X_test[c])[0])]
     cm = confusion_matrix(y_test, clf.predict(X_test))
     return {'score':right/(right+wrong),'confusion_matrix':cm}
@@ -225,26 +256,50 @@ def onlyRandomSamples(X_train,y_train):
             filtered_y_train.append(y_train[idx])
     return (filtered_x_train,filtered_y_train)
 
+
+#########################################################
+######### One Vs. ALL Algorithm #########################
+#########################################################
+
+
 def runOVA(vectors,labels,possessionids):
     score = 0
     confusion_matrix = []
+    correct_bucket = []
+    total_bucket = []
     for i in range(ITERATIONS):
         result = testClassifier(vectors,labels,possessionids,'OVA',None,None,None)
         score += result['score']
         confusion_matrix = sumArrays(confusion_matrix,confusionMatrixToList(result['confusion_matrix']))
+        correct_bucket = ([ x1+y1 for x1,y1 in zip(correct_bucket, result['correct_bucket'])] if correct_bucket else result['correct_bucket'])
+        total_bucket = ([ x1+y1 for x1, y1 in zip(total_bucket, result['total_bucket'])] if total_bucket else result['total_bucket'])
+    print '\nConfidence Buckets'
+    confidence_bucket = [(round(float(ai)/bi,2) if bi>0 else 0) for ai,bi in zip(correct_bucket,total_bucket)]
+    printConfidenceBuckets(confidence_bucket,[round(float(tb)/sum(total_bucket),2) for tb in total_bucket])
     final_score = round(score/ITERATIONS,2)
     print '\nOVA Confusion Matrix'
     prettyPrintConfusionMatrix(confusion_matrix,labels)
     print 'OVA Score: '+str(final_score)
 
+def printConfidenceBuckets(confidence_bucket,total_bucket):
+    headers = ['Confidence']
+    for i in range(len(confidence_bucket)):
+        headers.append(str(int(i*100/len(confidence_bucket)))+'-'+str(int((i+1)*100/len(confidence_bucket)))+'%')
+    x = PrettyTable(headers)
+    x.padding_width = 1 # One space between column edges and contents (default)
+    x.add_row(['Correctness']+confidence_bucket)
+    x.add_row(['Percent of Samples']+total_bucket)
+    print x
+
 def ovaClassifier(X_train,X_test,y_train,y_test):
     # 1. Generate an SVM for every label and its complement
     labels = list(set(sorted(y_train)))
-    labels.remove(501)
+    if 501 in labels:
+        labels.remove(501) # enable if using random
     svm_dict = {}
     for label in labels:
         new_y_train = [(1 if y==label else 0) for y in y_train]
-        clf = svm.SVC(C=2,class_weight={1:3,0:1},probability=True)
+        clf = svm.SVC(C=1,class_weight={1:3,0:1},probability=True)
         clf.fit(X_train,new_y_train)
         svm_dict[label] = clf
     # 2. Now Run every test point through each one vs. all
@@ -254,36 +309,52 @@ def ovaClassifier(X_train,X_test,y_train,y_test):
         for key,value in svm_dict.items():
             prediction = value.predict(X_test[idx])[0]
             probability = value.predict_proba(X_test[idx])[0][1]
+            prediction = (1 if probability > .5 else 0)
             results.append((prediction,probability,key))
         all_results.append({'results':results,'label':val})
     
-    # 3. Score the items
+    # 3. Generate guesses, labels, and confidence arrays (for scoring)
     guesses = []
     labels = []
+    confidence = []
     for all_result in all_results:
         prediction = predictOVA(all_result)
-        if prediction:
-            guesses.append(prediction)
-            labels.append(all_result['label'])
+        guesses.append(prediction['handle'])
+        if prediction['pos_probability'] > 0:
+            confidence.append(prediction['pos_probability'])
+        else:
+            confidence.append(1.0-prediction['neg_probability'])
+        labels.append(all_result['label'])
+
+    #4. Score 
+    correct_buckets = [0]*10
+    total_buckets = [0]*10
+    for i in range(len(guesses)):
+        score = (1 if guesses[i]==labels[i] else 0)
+        bucket = int(math.floor(confidence[i]*10))
+        correct_buckets[bucket] += score
+        total_buckets[bucket] += 1
     score = sum([(1 if guesses[i]==labels[i] else 0) for i in range(len(guesses))])/float(len(guesses))
     guesses = np.array(guesses)
-    labels = np.array(labels)
     cm = confusion_matrix(labels, guesses)
-    return {'score':score,'confusion_matrix':cm}
+    return {'score':score,'confusion_matrix':cm,'all_results':all_results,'labels':labels,'correct_bucket':correct_buckets,'total_bucket':total_buckets}
 
+
+## Given the probabilities from each SVM, get the prediction ##
 def predictOVA(outcome):
     count = 0
-    highest_prob = 0
+    highest_pos_prob = 0
+    highest_neg_prob = 0
     handle = 501
     for rank in outcome['results']:
-        if rank[0] > 0 and rank[1]>highest_prob:
-            highest_prob = rank[1]
+        #if rank[1] > highest_pos_prob:
+        if rank[1] > .5 and rank[1] > highest_pos_prob:
+            highest_pos_prob = rank[1]
             handle = rank[2]
             count += 1
-    if count > 1:
-        return handle # More than one match, now it just returns the highest probability match
-    else:
-        return handle
+        else:
+            highest_neg_prob = max(highest_neg_prob,rank[1])
+    return {'handle':handle,'pos_probability':highest_pos_prob,'neg_probability':highest_neg_prob}
 
 #########################################################
 ######### Test Classification Algorithm #################
@@ -297,6 +368,8 @@ def testClassifier(X,y,ids,method,variable1,variable2,variable3):
     skf = cross_validation.StratifiedKFold(y,5) # Test using stratified split
     score,count = 0,0
     confusion_matrix = []
+    correct_bucket = []
+    total_bucket = []
     for train_index,test_index in skf:
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
@@ -312,7 +385,10 @@ def testClassifier(X,y,ids,method,variable1,variable2,variable3):
         score += result['score']
         count += 1
         confusion_matrix = sumArrays(confusion_matrix,confusionMatrixToList(result['confusion_matrix']))
-    return {'score':score/float(count),'confusion_matrix':confusion_matrix}
+        correct_bucket = ([ x1+y1 for x1,y1 in zip(correct_bucket, result['correct_bucket'])] if correct_bucket else result['correct_bucket'])
+        total_bucket = ([ x1+y1 for x1, y1 in zip(total_bucket, result['total_bucket'])] if total_bucket else result['total_bucket'])
+    return {'score':score/float(count),'confusion_matrix':confusion_matrix,'correct_bucket':correct_bucket,'total_bucket':total_bucket}
+
 
 ### Cascaded Classification Algorithm ###
 def cascadedClassification(X_train,X_test,y_train,y_test):
@@ -411,6 +487,8 @@ def sumArrays(array_one,array_two):
             new_elem.append(array_one[i][j]+array_two[i][j])
         final_array.append(new_elem)
     return final_array
+
+
 
 ### Normalizes an array so the sum of all elements = new_sum ###
 def normalizeArray(array):
