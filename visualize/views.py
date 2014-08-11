@@ -73,9 +73,12 @@ def loadpossession(request):
 	data = createVisualData(possession,positions)
 	return HttpResponse(json.dumps({'status':200,'play_array':data['play_array'],'closeness':closeness(positions['easy_positions']),'meta_data':data['meta_data']}), content_type='application/json')
 
-def createVisualData(possession,positions):
+def createVisualData(possession,getpositions):
+	for event in getpositions['events']:
+		print event
 	play_array = []
-	positions = positions['positions']
+	flipped = getpositions['far_side_of_court']
+	positions = getpositions['positions']
 	pos_o = positions[0]
 	home = True if positions[0].team_one_id == 2 else False
 	meta_data = {'game_id':possession.game_number,
@@ -87,39 +90,44 @@ def createVisualData(possession,positions):
 	}
 	for pos in positions:
 		pos_one = [pos.team_one_player_one_id,
-			pos.team_one_player_one_x,
-			pos.team_one_player_one_y,
+			flippedX(flipped,pos.team_one_player_one_x),
+			flippedY(flipped,pos.team_one_player_one_y),
 			pos.team_one_player_two_id,
-			pos.team_one_player_two_x,
-			pos.team_one_player_two_y,
+			flippedX(flipped,pos.team_one_player_two_x),
+			flippedY(flipped,pos.team_one_player_two_y),
 			pos.team_one_player_three_id,
-			pos.team_one_player_three_x,
-			pos.team_one_player_three_y,
+			flippedX(flipped,pos.team_one_player_three_x),
+			flippedY(flipped,pos.team_one_player_three_y),
 			pos.team_one_player_four_id,
-			pos.team_one_player_four_x,
-			pos.team_one_player_four_y,
+			flippedX(flipped,pos.team_one_player_four_x),
+			flippedY(flipped,pos.team_one_player_four_y),
 			pos.team_one_player_five_id,
-			pos.team_one_player_five_x,
-			pos.team_one_player_five_y]
+			flippedX(flipped,pos.team_one_player_five_x),
+			flippedY(flipped,pos.team_one_player_five_y)]
 		pos_two = [pos.team_two_player_one_id,
-			pos.team_two_player_one_x,
-			pos.team_two_player_one_y,
+			flippedX(flipped,pos.team_two_player_one_x),
+			flippedY(flipped,pos.team_two_player_one_y),
 			pos.team_two_player_two_id,
-			pos.team_two_player_two_x,
-			pos.team_two_player_two_y,
+			flippedX(flipped,pos.team_two_player_two_x),
+			flippedY(flipped,pos.team_two_player_two_y),
 			pos.team_two_player_three_id,
-			pos.team_two_player_three_x,
-			pos.team_two_player_three_y,
+			flippedX(flipped,pos.team_two_player_three_x),
+			flippedY(flipped,pos.team_two_player_three_y),
 			pos.team_two_player_four_id,
-			pos.team_two_player_four_x,
-			pos.team_two_player_four_y,
+			flippedX(flipped,pos.team_two_player_four_x),
+			flippedY(flipped,pos.team_two_player_four_y),
 			pos.team_two_player_five_id,
-			pos.team_two_player_five_x,
-			pos.team_two_player_five_y]
+			flippedX(flipped,pos.team_two_player_five_x),
+			flippedY(flipped,pos.team_two_player_five_y)]
 		combined = pos_one+pos_two if home else pos_two+pos_one
-		play_array.append(combined+[pos.ball_x,pos.ball_y,pos.ball_z,pos.time_on_clock])
+		play_array.append(combined+[flippedX(flipped,pos.ball_x),flippedY(flipped,pos.ball_y),pos.ball_z,pos.time_on_clock])
 	return {'play_array':play_array,'meta_data':meta_data}
 
+def flippedX(flipped,X):
+	return X if not flipped else 90-X
+
+def flippedY(flipped,Y):
+	return Y if not flipped else 50-Y
 
 
 

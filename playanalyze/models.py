@@ -72,6 +72,9 @@ class Position(models.Model):
 	ball_y = models.FloatField(max_length=13)
 	ball_z = models.FloatField(max_length=13)
 
+	def __unicode__(self):
+		return (self.ball_x,self.ball_y)
+
 ########### Events ############
 class Event(models.Model):
 	game_id = models.BigIntegerField(max_length=13)

@@ -14,13 +14,13 @@ from random import shuffle
 #########################################################
 
 PLAYS = {26:'ELBOW',42:'FLOPPY',53:'HORNS',92:'INVERT',98:'DELAY',32:'PUNCH',51:'DROP',7:'DRAG',501:'RANDOM',9:'POSTUP'} # Used for Pretty Print
-
+PLAYS = {1:'PLAY',0:'NOT-PLAY'}
 ### Toggle Classifiers ###
 KNN = False
-SVM = False
+SVM = True
 OVO = False
-OVA = True
-RANKED = True
+OVA = False
+RANKED = False
 LEAVE_ONE_OUT = False
 ITERATIONS = 1
 
@@ -152,10 +152,10 @@ def kNeighborsClassifier(X_train,X_test,y_train,y_test,posid,variable1):
 #########################################################
 def runSVM(vectors,labels,possessionids):
     final_scores = []
-    penalties = [1]
+    penalties = [.1,1]
+    class_weight = [1,3]
     for penalty in penalties: # Include a list of the penalty values you want to test over
-        gamma_array = [1]
-        for gamma in gamma_array:
+        for gamma in class_weight:
             score = 0
             confusion_matrix = []
             for i in range(ITERATIONS):
@@ -165,8 +165,9 @@ def runSVM(vectors,labels,possessionids):
             final_scores.append(round(score/ITERATIONS,2))
             print '\nSVM Confusion Matrix for C='+str(penalty)
             prettyPrintConfusionMatrix(confusion_matrix,labels)
-    for i in range(len(final_scores)):
-        print "SVM with penalty "+str(penalties[i])+": "+str(final_scores[i])
+    for i in range(len(penalties)):
+        for j in range(len(class_weight)):
+            print "SVM with penalty "+str(penalties[i])+" and class weight "+str(class_weight[j])+": "+str(final_scores[i*j])
 
 def svmClassifier(X_train,X_test,y_train,y_test,penalty,gamma,kernel):
     clf = svm.SVC(C=penalty,kernel=kernel,gamma=gamma,probability=True)
@@ -278,7 +279,7 @@ def runOVA(vectors,labels,possessionids):
     printConfidenceBuckets(confidence_bucket,[round(float(tb)/sum(total_bucket),2) for tb in total_bucket])
     final_score = round(score/ITERATIONS,2)
     print '\nOVA Confusion Matrix'
-    prettyPrintConfusionMatrix(confusion_matrix,labels)
+    #prettyPrintConfusionMatrix(confusion_matrix,labels)
     print 'OVA Score: '+str(final_score)
 
 def printConfidenceBuckets(confidence_bucket,total_bucket):
@@ -385,8 +386,8 @@ def testClassifier(X,y,ids,method,variable1,variable2,variable3):
         score += result['score']
         count += 1
         confusion_matrix = sumArrays(confusion_matrix,confusionMatrixToList(result['confusion_matrix']))
-        correct_bucket = ([ x1+y1 for x1,y1 in zip(correct_bucket, result['correct_bucket'])] if correct_bucket else result['correct_bucket'])
-        total_bucket = ([ x1+y1 for x1, y1 in zip(total_bucket, result['total_bucket'])] if total_bucket else result['total_bucket'])
+        #correct_bucket = ([ x1+y1 for x1,y1 in zip(correct_bucket, result['correct_bucket'])] if correct_bucket else result['correct_bucket'])
+        #total_bucket = ([ x1+y1 for x1, y1 in zip(total_bucket, result['total_bucket'])] if total_bucket else result['total_bucket'])
     return {'score':score/float(count),'confusion_matrix':confusion_matrix,'correct_bucket':correct_bucket,'total_bucket':total_bucket}
 
 
@@ -450,6 +451,13 @@ def prettyPrintConfusionMatrix(cm,axes):
     x = PrettyTable(toprow)
     for i in range(len(cm)):
         x.add_row([PLAYS[axes[i]]]+cm[i])
+    print x
+
+def prettyPrintGrid(y_axis,x_axis,values):
+    x_label = ['']+x_axis
+    x = PrettyTable(x_label)
+    for index,label in enumerate(y_axis):
+        x.add_row([label]+values[index])
     print x
 
 

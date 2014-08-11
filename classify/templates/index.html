@@ -118,7 +118,7 @@ function drawPlayers(sequence_no) {
 	for (var player=0; player < 5; player++) {
 		//Draw offensive positions
 		x = position_array[sequence_no][player*3+1]*COURT_MULTIPLIER;
-		y = position_array[sequence_no][player*3+2]*COURT_MULTIPLIER;
+		y = (50-position_array[sequence_no][player*3+2])*COURT_MULTIPLIER;
 		$('#court-canvas').drawImage({
 		  source: offense,
 		  layer: true,
@@ -144,7 +144,7 @@ function drawPlayers(sequence_no) {
 		});
 		//Draw defensive positions
 		x = position_array[sequence_no][15+player*3+1]*COURT_MULTIPLIER;
-		y = position_array[sequence_no][15+player*3+2]*COURT_MULTIPLIER;
+		y = (50-position_array[sequence_no][15+player*3+2])*COURT_MULTIPLIER;
 		$('#court-canvas').drawImage({
 		  source: defense,
 		  layer: true,
@@ -171,7 +171,7 @@ function drawPlayers(sequence_no) {
 	}
 	//Draw the ball
 	x = position_array[sequence_no][30]*COURT_MULTIPLIER;
-	y = position_array[sequence_no][31]*COURT_MULTIPLIER;
+	y = (50-position_array[sequence_no][31])*COURT_MULTIPLIER;
 	z = 20+(position_array[sequence_no][32]*10)/10;
 	$('#court-canvas').drawImage({
 	  source: ball,
